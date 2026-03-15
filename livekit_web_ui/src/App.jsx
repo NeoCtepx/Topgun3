@@ -100,10 +100,28 @@ export function App() {
   const chatScrollRef = useRef(null)
   const hiddenAudioRef = useRef(null)
   const visibleIdsRef = useRef([])
+  const denyIdsRef = useRef([])
   const displayNameByIdentityRef = useRef({})
 
+  function isVisibleForInvite(identity) {
+    const visible = visibleIdsRef.current
+    const blocked = denyIdsRef.current
+
+    if (visible.length > 0) {
+      return visible.includes(identity)
+    }
+    return !blocked.includes(identity)
+  }
+
   const selectedTile = participantTiles.find((tile) => tile.id === selectedTileId) || participantTiles[0] || null
-  const displayedMessages = activeChatTab === 'group' ? chatMessages : personalMessages
+
+  const displayedMessages = activeChatTab === 'group'
+    ? chatMessages.filter((m) => {
+        const senderId = (m.sender || '').trim()
+        if (senderId === '' || senderId === (roomRef.current?.localParticipant?.identity || '')) return true
+        return isVisibleForInvite(senderId)
+      })
+    : personalMessages
 
   const [callDurationSec, setCallDurationSec] = useState(0)
 
@@ -140,6 +158,7 @@ export function App() {
       setRoomName(inviteData.room_name)
       setParticipantId(inviteData.participant_id)
       setConferenceTopic(inviteData.conference_topic || 'Конференция')
+      denyIdsRef.current = inviteData.deny_video_participants || []
     }
   }, [inviteData])
 
@@ -158,22 +177,13 @@ export function App() {
 
   useEffect(() => {
     return () => {
-      if (chatPollRef.current) {
-        clearInterval(chatPollRef.current)
-      }
-      if (roomRef.current) {
-        roomRef.current.disconnect()
-      }
+      if (chatPollRef.current) clearInterval(chatPollRef.current)
+      if (roomRef.current) roomRef.current.disconnect()
     }
   }, [])
 
   function adminAuthHeader() {
     return `Basic ${btoa(`${adminAuth.login}:${adminAuth.password}`)}`
-  }
-
-  function isVisibleForInvite(identity) {
-    const allowed = visibleIdsRef.current
-    return allowed.length === 0 || allowed.includes(identity)
   }
 
   function getMappedDisplayName(identity) {
@@ -313,16 +323,11 @@ export function App() {
 
       room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
         const sid = publication.trackSid || track.sid || ''
-
         if (track.kind === Track.Kind.Video && !isVisibleForInvite(participant.identity)) {
           publication.setSubscribed(false)
           return
         }
-
-        if (track.kind === Track.Kind.Audio) {
-          attachAudioTrack(track, sid)
-        }
-
+        if (track.kind === Track.Kind.Audio) attachAudioTrack(track, sid)
         refreshFromRoom()
       })
 
@@ -334,11 +339,8 @@ export function App() {
 
       room.on(RoomEvent.ParticipantConnected, async (participant) => {
         participant.trackPublications.forEach((pub) => {
-          if (pub.kind === Track.Kind.Video) {
-            pub.setSubscribed(isVisibleForInvite(participant.identity))
-          }
+          if (pub.kind === Track.Kind.Video) pub.setSubscribed(isVisibleForInvite(participant.identity))
         })
-
         const ownName = displayNameInput.trim()
         if (ownName) {
           try {
@@ -346,17 +348,11 @@ export function App() {
             await room.localParticipant.publishData(data, { reliable: true })
           } catch {}
         }
-
         refreshFromRoom()
       })
 
-      room.on(RoomEvent.ParticipantDisconnected, () => {
-        refreshFromRoom()
-      })
-
-      room.on(RoomEvent.ParticipantAttributesChanged, () => {
-        refreshFromRoom()
-      })
+      room.on(RoomEvent.ParticipantDisconnected, () => refreshFromRoom())
+      room.on(RoomEvent.ParticipantAttributesChanged, () => refreshFromRoom())
 
       room.on(RoomEvent.DataReceived, (payload, participant) => {
         if (!participant) return
@@ -374,23 +370,13 @@ export function App() {
       })
 
       room.on(RoomEvent.TrackPublished, (publication, participant) => {
-        if (publication.kind === Track.Kind.Video) {
-          publication.setSubscribed(isVisibleForInvite(participant?.identity))
-        }
+        if (publication.kind === Track.Kind.Video) publication.setSubscribed(isVisibleForInvite(participant?.identity))
         refreshFromRoom()
       })
 
-      room.on(RoomEvent.TrackUnpublished, () => {
-        refreshFromRoom()
-      })
-
-      room.on(RoomEvent.LocalTrackPublished, () => {
-        refreshFromRoom()
-      })
-
-      room.on(RoomEvent.LocalTrackUnpublished, () => {
-        refreshFromRoom()
-      })
+      room.on(RoomEvent.TrackUnpublished, () => refreshFromRoom())
+      room.on(RoomEvent.LocalTrackPublished, () => refreshFromRoom())
+      room.on(RoomEvent.LocalTrackUnpublished, () => refreshFromRoom())
 
       setStatus('Подключаемся к конференции...')
       await room.connect(inviteData.livekit_url, tokenBody.token)
@@ -400,10 +386,7 @@ export function App() {
       rememberDisplayName(room.localParticipant.identity, enteredDisplayName)
 
       try {
-        await room.localParticipant.setAttributes({
-          display_name: enteredDisplayName,
-          displayName: enteredDisplayName,
-        })
+        await room.localParticipant.setAttributes({ display_name: enteredDisplayName, displayName: enteredDisplayName })
       } catch {}
 
       try {
@@ -417,17 +400,14 @@ export function App() {
 
       try {
         const metadata = JSON.parse(room.localParticipant.metadata || '{}')
-        const metadataVisible = metadata.visible_video_participants || []
-        visibleIdsRef.current = metadataVisible
+        visibleIdsRef.current = metadata.visible_video_participants || []
       } catch {
         visibleIdsRef.current = []
       }
 
       room.remoteParticipants.forEach((participant) => {
         participant.trackPublications.forEach((pub) => {
-          if (pub.kind === Track.Kind.Video) {
-            pub.setSubscribed(isVisibleForInvite(participant.identity))
-          }
+          if (pub.kind === Track.Kind.Video) pub.setSubscribed(isVisibleForInvite(participant.identity))
           if (pub.kind === Track.Kind.Audio && pub.isSubscribed && pub.track) {
             const sid = pub.trackSid || pub.track.sid || ''
             attachAudioTrack(pub.track, sid)
@@ -437,7 +417,6 @@ export function App() {
 
       setConnected(true)
       setStatus('Подключено')
-
       rebuildParticipantTiles(room)
 
       if (inviteData.chat_enabled !== false) {
@@ -446,13 +425,10 @@ export function App() {
       }
 
       setTimeout(() => {
-        const hasAnyVideo = room.localParticipant.videoTrackPublications.size > 0 || Array.from(room.remoteParticipants.values()).some((participant) => {
-          const pub = getVideoPublication(participant)
-          return Boolean(pub?.track)
-        })
-
+        const hasAnyVideo = room.localParticipant.videoTrackPublications.size > 0 ||
+          Array.from(room.remoteParticipants.values()).some(p => Boolean(getVideoPublication(p)?.track))
         if (!hasAnyVideo) {
-          setNoVideoWarning('Видео пока не отображается. Проверьте HTTPS/разрешения камеры и что у участников включена камера.')
+          setNoVideoWarning('Видео пока не отображается. Проверьте HTTPS/разрешения камеры.')
         }
       }, 6000)
 
@@ -467,9 +443,8 @@ export function App() {
           setWarning(`Не удалось включить камеру/микрофон: ${String(publishErr?.message || publishErr)}`)
         }
       } else {
-        setWarning('getUserMedia не поддерживается в этом браузере / контексте')
+        setWarning('getUserMedia не поддерживается')
       }
-
     } catch (err) {
       if (roomRef.current) {
         roomRef.current.disconnect()
@@ -494,7 +469,6 @@ export function App() {
       clearInterval(chatPollRef.current)
       chatPollRef.current = null
     }
-
     hiddenAudioRef.current && (hiddenAudioRef.current.innerHTML = '')
 
     setConnected(false)
@@ -576,6 +550,12 @@ export function App() {
     setCopyStatus('')
 
     try {
+      let allParticipants = allList.split(',').map(x => x.trim()).filter(Boolean)
+
+      // ← АВТОМАТИЧЕСКОЕ УДАЛЕНИЕ СЕБЯ ИЗ СПИСКА "Все ID участников"
+      const selfId = participantId.trim()
+      allParticipants = allParticipants.filter(id => id !== selfId)
+
       const payload = {
         participant_id: participantId,
         room_name: roomName,
@@ -585,9 +565,9 @@ export function App() {
         mode,
         chat_enabled: chatEnabled,
         unique_link: uniqueLink,
-        allow_video_participants: allowList.split(',').map((x) => x.trim()).filter(Boolean),
-        deny_video_participants: denyList.split(',').map((x) => x.trim()).filter(Boolean),
-        all_video_participants: allList.split(',').map((x) => x.trim()).filter(Boolean),
+        allow_video_participants: allowList.split(',').map(x => x.trim()).filter(Boolean),
+        deny_video_participants: denyList.split(',').map(x => x.trim()).filter(Boolean),
+        all_video_participants: allParticipants,   // ← уже без себя
       }
 
       const res = await fetch(`${apiBaseUrl}/admin/invite`, {
@@ -634,15 +614,16 @@ export function App() {
               </div>
             ) : (
               <div className="meeting-ui">
+                {/* ... весь UI остается точно таким же, как раньше ... */}
                 <header className="meeting-header">
                   <div className="meeting-header-left">
-                    <span className="cube-icon" aria-hidden="true">🔵</span>
+                    <span className="cube-icon" aria-hidden="true">Cube</span>
                     <h2>{inviteData.conference_topic || 'Конференция'}</h2>
                     <span className="meeting-timer">{callDurationLabel}</span>
                   </div>
                   <div className="meeting-header-right">
                     <div className="meeting-search" aria-label="Search message">
-                      <span aria-hidden="true">🔍</span>
+                      <span aria-hidden="true">Search</span>
                       <input type="text" placeholder="Search message..." />
                     </div>
                     <div className="meeting-avatar" title={displayName || inviteData.participant_id}>{(displayName || inviteData.participant_id).slice(0, 2).toUpperCase()}</div>
@@ -688,11 +669,11 @@ export function App() {
                     </div>
 
                     <div className="meeting-controls">
-                      <button onClick={toggleMic} className={`control-btn ${!micEnabled ? 'danger' : ''}`}>{micEnabled ? '🎙️' : '🎙️✖'}</button>
-                      <button onClick={toggleCamera} className={`control-btn ${!cameraEnabled ? 'danger' : ''}`}>{cameraEnabled ? '📷' : '📷✖'}</button>
-                      <button className="control-btn">🖥️</button>
-                      <button className="control-btn">⋯</button>
-                      <button className="control-btn">😊</button>
+                      <button onClick={toggleMic} className={`control-btn ${!micEnabled ? 'danger' : ''}`}>{micEnabled ? 'Mic' : 'Mic Off'}</button>
+                      <button onClick={toggleCamera} className={`control-btn ${!cameraEnabled ? 'danger' : ''}`}>{cameraEnabled ? 'Camera' : 'Camera Off'}</button>
+                      <button className="control-btn">Screen</button>
+                      <button className="control-btn">More</button>
+                      <button className="control-btn">Smile</button>
                       <button onClick={leaveRoom} className="leave-meet-btn">Leave Meet</button>
                     </div>
 
@@ -702,20 +683,8 @@ export function App() {
                   {inviteData.chat_enabled !== false && (
                     <aside className="meeting-chat-sidebar">
                       <div className="chat-tabs modern">
-                        <button
-                          type="button"
-                          onClick={() => setActiveChatTab('group')}
-                          className={`tab ${activeChatTab === 'group' ? 'active' : ''}`}
-                        >
-                          Group
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveChatTab('personal')}
-                          className={`tab ${activeChatTab === 'personal' ? 'active' : ''}`}
-                        >
-                          Personal
-                        </button>
+                        <button type="button" onClick={() => setActiveChatTab('group')} className={`tab ${activeChatTab === 'group' ? 'active' : ''}`}>Group</button>
+                        <button type="button" onClick={() => setActiveChatTab('personal')} className={`tab ${activeChatTab === 'personal' ? 'active' : ''}`}>Personal</button>
                       </div>
 
                       <div ref={chatScrollRef} className="chat-thread">
@@ -786,11 +755,11 @@ export function App() {
                 <label className="inline-check"><input type="checkbox" checked={chatEnabled} onChange={(e) => setChatEnabled(e.target.checked)} /> Общий чат включен</label>
                 <label className="inline-check"><input type="checkbox" checked={uniqueLink} onChange={(e) => setUniqueLink(e.target.checked)} /> Выдача уникальных ссылок (одна ссылка = один вход)</label>
                 <label>Все ID участников (через запятую)</label>
-                <input value={allList} onChange={(e) => setAllList(e.target.value)} placeholder="Если пусто в режиме deny_list — будут видны все камеры" />
+                <input value={allList} onChange={(e) => setAllList(e.target.value)} placeholder="Можно писать полный список включая себя — фронт сам удалит" />
                 <label>Список "разрешить" (через запятую)</label>
-                <input value={allowList} onChange={(e) => setAllowList(e.target.value)} placeholder="Напр.: P2,P3 (ID должны совпадать с ID участников)" />
+                <input value={allowList} onChange={(e) => setAllowList(e.target.value)} placeholder="Напр.: P2,P3" />
                 <label>Список "запретить" (через запятую)</label>
-                <input value={denyList} onChange={(e) => setDenyList(e.target.value)} placeholder="Напр.: P4,P5 (ID должны совпадать с ID участников)" />
+                <input value={denyList} onChange={(e) => setDenyList(e.target.value)} placeholder="Напр.: P6" />
 
                 <button onClick={generateInvite}>Создать личную ссылку</button>
                 {adminError && <p className="error">{adminError}</p>}
@@ -811,3 +780,5 @@ export function App() {
     </>
   )
 }
+
+export default App
