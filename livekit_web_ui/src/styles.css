@@ -65,7 +65,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .invite-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; }
 .prejoin { margin-top: 20px; }
 
-/* In-call meeting layout */
 .meeting-ui {
   margin-top: 14px;
   border-radius: 18px;
@@ -373,6 +372,18 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   .hero-video-grid.single-view { min-height: 360px; }
 }
 
+.help-badge {
+  margin: 0;
+  align-self: flex-end;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  max-width: 320px;
+}
+
 .meeting-chat-sidebar {
   height: 100%;
   min-height: 0;
@@ -383,61 +394,47 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   border: 1px solid #2a3658;
   border-radius: 10px;
   overflow: hidden;
-  width: fit-content;
 }
 
-.meeting-chat-sidebar .chat-tabs.modern .tab {
-  border: 0;
-  background: #111a2f;
-  color: #c6d3f0;
-  padding: 8px 12px;
-  font-weight: 600;
-  transition: all .2s ease;
+@media (max-width: 768px) {
+  html, body { height: 100vh !important; overflow: hidden !important; }
+  .page { max-width: 100% !important; padding: 0 !important; margin: 0 !important; height: 100vh !important; }
+  .hero { padding: 14px !important; border-radius: 12px !important; }
+  .hero h1 { font-size: 26px !important; }
+  .panel { padding: 12px !important; margin-top: 12px !important; border-radius: 12px !important; }
+  .panel.compact { max-width: 100% !important; }
+  .theme-switcher { top: 10px; right: 10px; gap: 4px; }
+  .theme-switcher button { padding: 6px 8px !important; font-size: 13px; }
+  .meeting-ui { margin: 0 !important; border-radius: 0 !important; border: none !important; height: 100vh !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; padding: 0 !important; }
+  .meeting-header { flex-direction: row !important; align-items: center !important; gap: 8px !important; padding: 10px 12px !important; min-height: auto !important; flex-shrink: 0 !important; }
+  .meeting-header-left h2 { font-size: 16px !important; }
+  .meeting-search { display: none !important; }
+  .meeting-header-right { width: auto !important; justify-content: flex-end !important; }
+  .participant-strip-wrap { padding: 8px 12px 4px !important; flex-shrink: 0 !important; max-height: 92px !important; overflow: hidden !important; border-bottom: 1px solid #1a1f30 !important; }
+  .participant-strip { flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; gap: 6px !important; padding-bottom: 2px !important; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+  .participant-tile { flex: 0 0 84px !important; width: 84px !important; min-width: 84px !important; }
+  .thumb-frame { width: 84px !important; height: 50px !important; border-radius: 8px !important; }
+  .participant-tile span { font-size: 11px !important; margin-top: 3px !important; line-height: 1.1 !important; }
+  .meeting-main-grid { display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; overflow: hidden !important; margin-top: 0 !important; }
+  .meeting-stage { flex: 1 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; border-right: 0 !important; border-bottom: 1px solid #1a1f30 !important; padding: 6px 8px !important; }
+  .meeting-chat-sidebar { display: none !important; }
+  .stage-title-row { flex-shrink: 0 !important; }
+  .hero-video-grid.single-view { flex: 1 1 auto !important; min-height: 0 !important; height: auto !important; max-height: none !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 4px !important; }
+  .hero-video-element, .hero-fallback-name { width: 100% !important; max-height: 100% !important; object-fit: contain !important; }
+  .meeting-ui video, .video-container, [class*="video"], [class*="participant"] { width: 100% !important; max-width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; }
+  .meeting-controls { margin-top: auto !important; flex-shrink: 0 !important; display: flex !important; flex-direction: row !important; gap: 8px !important; justify-content: space-around !important; padding: 12px 8px !important; background: rgba(17,26,47,0.95) !important; border-radius: 12px !important; }
+  .control-btn { flex: 1 !important; max-width: 58px !important; height: 52px !important; font-size: 13px !important; }
+  button { padding: 12px 16px !important; font-size: 15px !important; width: 100% !important; }
+  .actions { flex-direction: column !important; gap: 8px !important; }
+  input, textarea, select { font-size: 16px !important; }
+  .invite-row { grid-template-columns: 1fr !important; gap: 8px !important; }
+  h2 { font-size: 18px !important; }
+  .leave-meet-btn { width: 100% !important; margin-top: 8px !important; }
 }
 
-.meeting-chat-sidebar .chat-tabs.modern .tab.active {
-  background: #007bff;
-  color: #fff;
-}
-
-.chat-thread {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-right: 4px;
-}
-
-.chat-row-line {
-  color: #e7edff;
-  font-size: 14px;
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.chat-row-sender {
-  color: #9ec0ff;
-  font-weight: 700;
-}
-
-.chat-row-time {
-  margin-left: 8px;
-  color: #7f95c5;
-  font-size: 11px;
-}
-
-.chat-composer {
-  margin-top: 8px;
-  margin-bottom: 66px;
-}
-
-.chat-composer input {
-  background: #0f1320;
-  border: 1px solid #2a3658;
-  border-radius: 10px;
-  color: #fff;
-  outline: none;
-  padding: 10px;
+@media (max-width: 480px) {
+  .hero h1 { font-size: 22px !important; }
+  .meeting-header { padding: 8px !important; }
+  .participant-tile { flex: 0 0 78px !important; width: 78px !important; }
+  .thumb-frame { width: 78px !important; height: 47px !important; }
 }
