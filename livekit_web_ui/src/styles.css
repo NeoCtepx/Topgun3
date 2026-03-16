@@ -373,18 +373,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   .hero-video-grid.single-view { min-height: 360px; }
 }
 
-.help-badge {
-  margin: 0;
-  align-self: flex-end;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--text);
-  font-size: 12px;
-  max-width: 320px;
-}
-
 .meeting-chat-sidebar {
   height: 100%;
   min-height: 0;

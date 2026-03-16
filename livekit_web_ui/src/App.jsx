@@ -64,7 +64,6 @@ export function App() {
   const [adminError, setAdminError] = useState('')
   const [generatedInvite, setGeneratedInvite] = useState('')
   const [copyStatus, setCopyStatus] = useState('')
-  const [showHelp, setShowHelp] = useState(false)
 
   const [serverUrl, setServerUrl] = useState('wss://personzroomz-a7chety0.livekit.cloud')
   const [apiBaseUrl, setApiBaseUrl] = useState('http://185.219.7.21:8000')
@@ -552,7 +551,6 @@ export function App() {
     try {
       let allParticipants = allList.split(',').map(x => x.trim()).filter(Boolean)
 
-      // ← АВТОМАТИЧЕСКОЕ УДАЛЕНИЕ СЕБЯ ИЗ СПИСКА "Все ID участников"
       const selfId = participantId.trim()
       allParticipants = allParticipants.filter(id => id !== selfId)
 
@@ -567,7 +565,7 @@ export function App() {
         unique_link: uniqueLink,
         allow_video_participants: allowList.split(',').map(x => x.trim()).filter(Boolean),
         deny_video_participants: denyList.split(',').map(x => x.trim()).filter(Boolean),
-        all_video_participants: allParticipants,   // ← уже без себя
+        all_video_participants: allParticipants,
       }
 
       const res = await fetch(`${apiBaseUrl}/admin/invite`, {
@@ -591,8 +589,6 @@ export function App() {
             <button className={theme === 'light' ? 'active' : ''} onClick={() => setTheme('light')}>Светлая</button>
             <button className={theme === 'gray' ? 'active' : ''} onClick={() => setTheme('gray')}>Серая</button>
             <button className={theme === 'dark' ? 'active' : ''} onClick={() => setTheme('dark')}>Тёмная</button>
-            <button className={showHelp ? 'active' : ''} onClick={() => setShowHelp((v) => !v)}>Помощь</button>
-            {showHelp && <p className="help-badge">Контакт с разработчиком — telegram: @Ctepx</p>}
           </div>
         )}
 
@@ -614,7 +610,6 @@ export function App() {
               </div>
             ) : (
               <div className="meeting-ui">
-                {/* ... весь UI остается точно таким же, как раньше ... */}
                 <header className="meeting-header">
                   <div className="meeting-header-left">
                     <span className="cube-icon" aria-hidden="true">Cube</span>
